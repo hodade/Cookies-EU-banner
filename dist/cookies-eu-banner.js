@@ -18,6 +18,16 @@
  *         Website : alex-d.fr
  */
 
+/**
+ * Cookies EU banner v1.2.10 - Manage display of banner to accept/reject cookies from tracking services like Google Analytics
+ * ------------------------
+ * @link http://alex-d.github.io/Cookies-EU-banner/
+ * @license MIT
+ * @author Alex-D
+ *         Twitter : @AlexandreDemode
+ *         Website : alex-d.fr
+ */
+
 ; // jshint ignore:line
 (function (root, factory, undefined) {
     'use strict';
@@ -57,20 +67,9 @@
                 return false;
             }
 
-            // // User has already consent to use cookies to tracking
-            // if (this.hasConsent() === true) {
-            //   // Launch user custom function
-            //   this.launchFunction();
-            //   return true;
-            // }
-
             // If it's not a bot, no DoNotTrack and not already accept : show banner
-            this.showBanner();
-
-            if (!this.waitAccept) {
-                // Accept cookies by default for the next page
-                this.setCookie(this.cookieName, true);
-            }
+            // this.showBanner();
+            this.showCover();
         },
 
         setLaunchFunction: function (f) {
@@ -79,6 +78,17 @@
 
         setLaunchFunctionReject: function (f) {
             this.launchFunctionReject = f;
+        },
+
+        showCover: function () {
+            var _this = this,
+                cover = document.getElementById('cookies-eu-cover');
+            if (cover) {
+                cover.style.display = 'block';
+                this.addEventListener(cover, 'click', function () {
+                    _this.showBanner();
+                });
+            }
         },
 
         /*
@@ -93,7 +103,6 @@
                 moreLink = document.getElementById('cookies-eu-more');
 
             banner.style.display = 'block';
-            cover.style.display = 'block';
 
             if (moreLink) {
                 this.addEventListener(moreLink, 'click', function () {
@@ -104,6 +113,7 @@
             if (acceptButton) {
                 this.addEventListener(acceptButton, 'click', function () {
                     _this.hideBanner();
+                    _this.hideCover();
                     _this.setCookie(_this.cookieName, true);
                     _this.launchFunction();
                 });
@@ -112,6 +122,7 @@
             if (rejectButton) {
                 this.addEventListener(rejectButton, 'click', function () {
                     _this.hideBanner();
+                    _this.showCover();
                     _this.setCookie(_this.cookieName, false);
                     _this.deleteTrackingCookies();
                     _this.launchFunctionReject();
@@ -120,10 +131,12 @@
         },
 
         hideBanner: function() {
-            var banner = document.getElementById('cookies-eu-banner'),
-                cover = document.getElementById('cookies-eu-cover');
-
+            var banner = document.getElementById('cookies-eu-banner');
             banner.style.display = 'none';
+        },
+
+        hideCover: function() {
+            var cover = document.getElementById('cookies-eu-cover');
             cover.style.display = 'none';
         },
 
