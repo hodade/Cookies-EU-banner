@@ -18,6 +18,16 @@
  *         Website : alex-d.fr
  */
 
+/**
+ * Cookies EU banner v1.2.10 - Manage display of banner to accept/reject cookies from tracking services like Google Analytics
+ * ------------------------
+ * @link http://alex-d.github.io/Cookies-EU-banner/
+ * @license MIT
+ * @author Alex-D
+ *         Twitter : @AlexandreDemode
+ *         Website : alex-d.fr
+ */
+
 ; // jshint ignore:line
 (function (root, factory, undefined) {
     'use strict';
@@ -44,7 +54,7 @@
         this.cookieTimeout = 33696000000; // 13 months in milliseconds
         this.bots = /bot|googlebot|crawler|spider|robot|crawling/i;
         this.cookieName = 'hasConsent';
-        this.trackingCookiesNames = [ '__utma', '__utmb', '__utmc', '__utmt', '__utmv', '__utmz', '_ga', '_gat', 'PHPSESSID' ];
+        this.trackingCookiesNames = [ '__utma', '__utmb', '__utmc', '__utmt', '__utmv', '__utmz', '_ga', '_gat', '_gid', 'PHPSESSID' ];
         this.waitAccept = true;
         this.init();
     };
@@ -59,7 +69,9 @@
 
             // If it's not a bot, no DoNotTrack and not already accept : show banner
             // this.showBanner();
-            this.showCover();
+            if (this.hasConsent() !== true) {
+                this.showCover();
+            }
         },
 
         setLaunchFunction: function (f) {
@@ -87,7 +99,6 @@
         showBanner: function () {
             var _this = this,
                 banner = document.getElementById('cookies-eu-banner'),
-                cover = document.getElementById('cookies-eu-cover'),
                 rejectButton = document.getElementById('cookies-eu-reject'),
                 acceptButton = document.getElementById('cookies-eu-accept'),
                 moreLink = document.getElementById('cookies-eu-more');
@@ -185,9 +196,7 @@
          */
         deleteCookie: function (name) {
             var hostname = document.location.hostname;
-            if (hostname.indexOf('www.') === 0) {
-                hostname = hostname.substring(4);
-            }
+            hostname = hostname.match(/(\w+)\.(\w+)$/)[0];
             document.cookie = name + '=; domain=.' + hostname + '; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/';
             document.cookie = name + '=; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/';
         },
