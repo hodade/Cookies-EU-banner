@@ -82,6 +82,13 @@
       if (this.hasConsent() !== true) {
         this.showCover();
       }
+
+      if (!this.waitAccept) {
+        this.showBanner();
+
+        // Accept cookies by default for the next page
+        this.setConsent(true);
+      }
     },
 
     setLaunchFunction: function (f) {
@@ -97,7 +104,7 @@
       cover = document.getElementById('cookies-eu-cover');
       if (cover) {
         cover.style.display = 'block';
-        this.addEventListener(cover, 'click', function () {
+        this.addClickListener(cover, function () {
           _this.showBanner();
         });
       }
@@ -128,7 +135,6 @@
 
       if (acceptButton) {
         addClickListener(acceptButton, function () {
-          _this.hideBanner();
           _this.hideCover();
           removeBanner();
           _this.setConsent(true);
@@ -138,7 +144,6 @@
 
       if (rejectButton) {
         addClickListener(rejectButton, function () {
-          _this.hideBanner();
           _this.showCover();
           removeBanner();
           _this.setConsent(false);
@@ -225,11 +230,10 @@
      * to specify their own transition effects
      */
     removeBanner: function (wait) {
+      var _this = this;
+
       setTimeout (function() {
-        var banner = document.getElementById('cookies-eu-banner');
-        if (banner && banner.parentNode) {
-          banner.parentNode.removeChild(banner);
-        }
+        _this.hideBanner();
       }, wait);
     }
   };
