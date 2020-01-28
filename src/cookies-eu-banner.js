@@ -30,185 +30,213 @@
 
 ; // jshint ignore:line
 (function (root, factory, undefined) {
-    'use strict';
-    if (typeof define === 'function' && define.amd) {
-        define([], factory);
-    } else if (typeof exports === 'object') {
-        module.exports = factory();
-    } else {
-        // root is window
-        root.CookiesEuBanner = factory();
-    }
+  'use strict';
+  if (typeof define === 'function' && define.amd) {
+    define([], factory);
+  } else if (typeof exports === 'object') {
+    module.exports = factory();
+  } else {
+    // root is window
+    root.CookiesEuBanner = factory();
+  }
 }(window, function () {
-    'use strict';
+  'use strict';
 
-    var CookiesEuBanner,
-        document = window.document;
+  var CookiesEuBanner,
+    document = window.document;
 
-    CookiesEuBanner = function () {
-        if (!(this instanceof CookiesEuBanner)) {
-            console.log('instanceof');
-            return new CookiesEuBanner();
-        }
+  CookiesEuBanner = function (launchFunction, waitAccept, useLocalStorage, undefined) {
+    if (!(this instanceof CookiesEuBanner)) {
+      return new CookiesEuBanner(launchFunction);
+    }
 
-        this.cookieTimeout = 33696000000; // 13 months in milliseconds
-        this.bots = /bot|googlebot|crawler|spider|robot|crawling/i;
-        this.cookieName = 'hasConsent';
-        this.trackingCookiesNames = [ '__utma', '__utmb', '__utmc', '__utmt', '__utmv', '__utmz', '_ga', '_gat', '_gid', 'PHPSESSID' ];
-        this.waitAccept = true;
-        this.init();
-    };
+    this.cookieTimeout = 33696000000; // 13 months in milliseconds
+    this.bots = /bot|crawler|spider|crawling/i;
+    this.cookieName = 'hasConsent';
+    this.trackingCookiesNames = ['__utma', '__utmb', '__utmc', '__utmt', '__utmv', '__utmz', '_ga', '_gat', '_gid', 'PHPSESSID'];
+    this.launchFunction = launchFunction;
+    this.waitAccept = waitAccept || true;
+    this.useLocalStorage = useLocalStorage || true;
+    this.init();
+  };
 
-    CookiesEuBanner.prototype = {
-        init: function () {
-            // Do nothing if it is a bot
-            // If DoNotTrack is activated, do nothing too
-            if (this.isBot() || !this.isToTrack()) {
-                return false;
-            }
+  CookiesEuBanner.prototype = {
+    init: function () {
+      // Detect if the visitor is a bot or not
+      // Prevent for search engine take the cookie alert message as main content of the page
+      var isBot = this.bots.test(navigator.userAgent);
 
-            // If it's not a bot, no DoNotTrack and not already accept : show banner
-            // this.showBanner();
-            if (this.hasConsent() !== true) {
-                this.showCover();
-            }
-        },
+      // Check if DoNotTrack is activated
+      var dnt = navigator.doNotTrack || navigator.msDoNotTrack || window.doNotTrack;
+      var isToTrack = (dnt !== null && dnt !== undefined) ? (dnt && dnt !== 'yes' && dnt !== 1 && dnt !== '1') : true;
 
-        setLaunchFunction: function (f) {
-            this.launchFunction = f;
-        },
+      // Do nothing if it is a bot
+      // If DoNotTrack is activated, do nothing too
+      if (isBot || !isToTrack) {
+        this.removeBanner(0);
+        return false;
+      }
 
-        setLaunchFunctionReject: function (f) {
-            this.launchFunctionReject = f;
-        },
+      // If it's not a bot, no DoNotTrack and not already accept, so show banner
+      // this.showBanner();
+      if (this.hasConsent() !== true) {
+        this.showCover();
+      }
 
-        showCover: function () {
-            var _this = this,
-                cover = document.getElementById('cookies-eu-cover');
-            if (cover) {
-                cover.style.display = 'block';
-                this.addEventListener(cover, 'click', function () {
-                    _this.showBanner();
-                });
-            }
-        },
+      if (!this.waitAccept) {
+        this.showBanner();
 
-        /*
-         * Show banner at the top of the page
-         */
-        showBanner: function () {
-            var _this = this,
-                banner = document.getElementById('cookies-eu-banner'),
-                rejectButton = document.getElementById('cookies-eu-reject'),
-                acceptButton = document.getElementById('cookies-eu-accept'),
-                moreLink = document.getElementById('cookies-eu-more');
+        // Accept cookies by default for the next page
+        this.setConsent(true);
+      }
+    },
 
-            banner.style.display = 'block';
+    setLaunchFunction: function (f) {
+      this.launchFunction = f;
+    },
 
-            if (moreLink) {
-                this.addEventListener(moreLink, 'click', function () {
-                    _this.deleteCookie(_this.cookieName);
-                });
-            }
+    setLaunchFunctionReject: function (f) {
+      this.launchFunctionReject = f;
+    },
 
-            if (acceptButton) {
-                this.addEventListener(acceptButton, 'click', function () {
-                    _this.hideBanner();
-                    _this.hideCover();
-                    _this.setCookie(_this.cookieName, true);
-                    _this.launchFunction();
-                });
-            }
+    showCover: function () {
+      var _this = this,
+      cover = document.getElementById('cookies-eu-cover');
+      if (cover) {
+        cover.style.display = 'block';
+        this.addClickListener(cover, function () {
+          _this.showBanner();
+        });
+      }
+    },
 
-            if (rejectButton) {
-                this.addEventListener(rejectButton, 'click', function () {
-                    _this.hideBanner();
-                    _this.showCover();
-                    _this.setCookie(_this.cookieName, false);
-                    _this.deleteTrackingCookies();
-                    _this.launchFunctionReject();
-                });
-            }
-        },
+    /*
+     * Show banner at the top of the page
+     */
+    showBanner: function () {
+      var _this = this,
+        getElementById = document.getElementById.bind(document),
+        banner = getElementById('cookies-eu-banner'),
+        rejectButton = getElementById('cookies-eu-reject'),
+        acceptButton = getElementById('cookies-eu-accept'),
+        moreLink = getElementById('cookies-eu-more'),
+        waitRemove = (banner.dataset.waitRemove === undefined) ? 0 : parseInt(banner.dataset.waitRemove),
+        // Variables for minification optimization
+        addClickListener = this.addClickListener,
+        removeBanner = _this.removeBanner.bind(_this, waitRemove);
 
-        hideBanner: function() {
-            var banner = document.getElementById('cookies-eu-banner');
-            banner.style.display = 'none';
-        },
+      banner.style.display = 'block';
 
-        hideCover: function() {
-            var cover = document.getElementById('cookies-eu-cover');
-            cover.style.display = 'none';
-        },
+      if (moreLink) {
+        addClickListener(moreLink, function () {
+          _this.deleteCookie(_this.cookieName);
+        });
+      }
 
-        /*
-         * Check if user already consent
-         */
-        hasConsent: function () {
-            if (document.cookie.indexOf(this.cookieName + '=true') > -1) {
-                return true;
-            } else if (document.cookie.indexOf(this.cookieName + '=false') > -1) {
-                return false;
-            }
+      if (acceptButton) {
+        addClickListener(acceptButton, function () {
+          _this.hideCover();
+          removeBanner();
+          _this.setConsent(true);
+          _this.launchFunction();
+        });
+      }
 
-            return null;
-        },
+      if (rejectButton) {
+        addClickListener(rejectButton, function () {
+          _this.showCover();
+          removeBanner();
+          _this.setConsent(false);
 
-        /*
-         * Detect if the visitor is a bot or not
-         * Prevent for search engine take the cookie
-         * alert message as main content of the page
-         */
-        isBot: function () {
-            return this.bots.test(navigator.userAgent);
-        },
+          // Delete existing tracking cookies
+          _this.trackingCookiesNames.map(_this.deleteCookie);
+          _this.launchFunctionReject();
+        });
+      }
+    },
 
-        /*
-         * Check if DoNotTrack is activated
-         */
-        isToTrack: function () {
-            var dnt = navigator.doNotTrack || navigator.msDoNotTrack || window.doNotTrack;
-            return (dnt !== null && dnt !== undefined) ? (dnt && dnt !== 'yes' && dnt !== 1 && dnt !== '1') : true;
-        },
+    hideBanner: function() {
+      var banner = document.getElementById('cookies-eu-banner');
+      banner.style.display = 'none';
+    },
 
-        /*
-         * Delete existent tracking cookies
-         */
-        deleteTrackingCookies: function () {
-            var _this = this;
-            this.trackingCookiesNames.map(function (cookieName) {
-                _this.deleteCookie(cookieName);
-            });
-        },
+    hideCover: function() {
+      var cover = document.getElementById('cookies-eu-cover');
+      cover.style.display = 'none';
+    },
 
-        /*
-         * Create/update cookie
-         */
-        setCookie: function (name, value) {
-            var date = new Date();
-            date.setTime(date.getTime() + this.cookieTimeout);
+    /*
+     * Set consent cookie or localStorage
+     */
+    setConsent: function (consent) {
+      if (this.useLocalStorage) {
+        return localStorage.setItem(this.cookieName, consent);
+      }
 
-            document.cookie = name + '=' + value + ';expires=' + date.toGMTString() + ';path=/';
-        },
+      this.setCookie(this.cookieName, consent);
+    },
 
-        /*
-         * Delete cookie by changing expire
-         */
-        deleteCookie: function (name) {
-            var hostname = document.location.hostname;
-            hostname = hostname.match(/(\w+)\.(\w+)$/)[0];
-            document.cookie = name + '=; domain=.' + hostname + '; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/';
-            document.cookie = name + '=; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/';
-        },
+    /*
+     * Check if user already consent
+     */
+    hasConsent: function () {
+      var cookieName = this.cookieName;
+      var isCookieSetTo = function (value) {
+        return document.cookie.indexOf(cookieName + '=' + value) > -1 || localStorage.getItem(cookieName) === value;
+      };
 
-        addEventListener: function (DOMElement, evnt, callback) {
-            if (document.addEventListener) { // For all major browsers, except IE 8 and earlier
-                DOMElement.addEventListener(evnt, callback);
-            } else if (DOMElement.attachEvent) { // For IE 8 and earlier versions
-                DOMElement.attachEvent('on' + evnt, callback);
-            }
-        }
-    };
+      if (isCookieSetTo('true')) {
+        return true;
+      } else if (isCookieSetTo('false')) {
+        return false;
+      }
 
-    return CookiesEuBanner;
+      return null;
+    },
+
+    /*
+     * Create/update cookie
+     */
+    setCookie: function (name, value) {
+      var date = new Date();
+      date.setTime(date.getTime() + this.cookieTimeout);
+
+      document.cookie = name + '=' + value + ';expires=' + date.toGMTString() + ';path=/';
+    },
+
+    /*
+     * Delete cookie by changing expire
+     */
+    deleteCookie: function (name) {
+      var hostname = document.location.hostname;
+      hostname = hostname.match(/(\w+)\.(\w+)$/)[0];
+      var commonSuffix = '; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/';
+
+      document.cookie = name + '=; domain=.' + hostname + commonSuffix;
+      document.cookie = name + '=' + commonSuffix;
+    },
+
+    addClickListener: function (DOMElement, callback) {
+      if (DOMElement.attachEvent) { // For IE 8 and earlier versions
+        return DOMElement.attachEvent('onclick', callback);
+      }
+
+      // For all major browsers, except IE 8 and earlier
+      DOMElement.addEventListener('click', callback);
+    },
+
+    /*
+     * Delays removal of banner allowing developers
+     * to specify their own transition effects
+     */
+    removeBanner: function (wait) {
+      var _this = this;
+
+      setTimeout (function() {
+        _this.hideBanner();
+      }, wait);
+    }
+  };
+
+  return CookiesEuBanner;
 }));
